@@ -1,28 +1,34 @@
-from flask import Flask, render_template, redirect
-from flask_pymongo import PyMongo
-import scrape_craigslist
+from flask import Flask, render_template, jsonify, redirect
+from flask_pymongo import pymongo
+import scrape_mars
 
 app = Flask(__name__)
 
-# Use flask_pymongo to set up mongo connection
-app.config["MONGO_URI"] = "mongodb://localhost:27017/craigslist_app"
-mongo = PyMongo(app)
+# setup mongo connection
+conn = "mongodb://localhost:27017"
 
-# Or set inline
-# mongo = PyMongo(app, uri="mongodb://localhost:27017/craigslist_app")
+client = pymongo.MongoClient(conn)
 
+# connect to mongo db and collection
+db = client.mars
+db.mars_data.drop()
+collection = db.mars_data
+
+#mars_data = db.mars_data.find()
 
 @app.route("/")
 def index():
-    listings = mongo.db.listings.find_one()
-    return render_template("index.html", listings=listings)
+    mars_data_values = list(db.collection.find())
+    #mars_data_values = mars_data_values[0]
+    return render_template("index.html", mars_data_values=mars_data_values)
 
 
 @app.route("/scrape")
 def scraper():
-    listings = mongo.db.listings
-    listings_data = scrape_craigslist.scrape()
-    listings.update({}, listings_data, upsert=True)
+    mars_dict = scrape_mars.scrape()
+    #db.mars_data.update({}, mars_dict, upsert=True)
+    db.collection.delete_many({})
+    db.collection.insert_one(mars_dict)
     return redirect("/", code=302)
 
 
